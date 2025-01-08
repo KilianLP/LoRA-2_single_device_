@@ -99,6 +99,14 @@ class Attention_LoRA(nn.Module):
         self.n_rep = self.n_local_heads // self.n_local_kv_heads
         self.head_dim = args.dim // args.n_heads
         self.r = args.r
+        
+        self.wq = nn.Linear(args.dim,args.n_heads * self.head_dim,bias=False)
+
+        self.wk = nn.Linear(args.dim,self.n_kv_heads * self.head_dim,bias=False)
+
+        self.wv = nn.Linear(args.dim,self.n_kv_heads * self.head_dim,bias=False)
+
+        self.wo = nn.Linear(args.n_heads * self.head_dim,args.dim,bias=False)
 
         self.scale_factor = args.alpha/self.r
 
@@ -187,7 +195,7 @@ class Attention_LoRA(nn.Module):
         output = torch.matmul(scores, values)  # (bs, n_local_heads, seqlen, head_dim)
         output = output.transpose(1, 2).contiguous().view(bsz, seqlen, -1)
 
-        return self.wo(output) + self.scale_factor * torch.matmul(x,(self.bo @ self.ao).T)
+        return self.wo(output) + self.scale_factor * self.lora_backbone_bo(self.lora_backbone_ao(x)) + self.scale_factor * self.experts_bo[expert](self.experts_ao[expert](x))
 
 
 class FeedForward(nn.Module):

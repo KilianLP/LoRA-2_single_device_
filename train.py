@@ -21,14 +21,7 @@ from torch.cuda.amp import autocast, GradScaler
 from torch.optim.lr_scheduler import LambdaLR
 import wandb
 import argparse 
-from fairscale.nn.model_parallel.initialize import (
-    get_model_parallel_rank,
-    initialize_model_parallel,
-    model_parallel_is_initialized,
-)
-import os
-import sys
-from pathlib import Path
+
 
 
 
@@ -49,8 +42,8 @@ parser.add_argument("--rope_theta", type=float, default=500000, help="Theta valu
 parser.add_argument("--n_translation_tokens", type=int, default=0, help="Number of translation tokens")
 parser.add_argument("--max_batch_size", type=int, default=2, help="Maximum batch size")
 parser.add_argument("--max_seq_len", type=int, default=2048, help="Maximum sequence length")
-parser.add_argument("--alpha", type=float, default=16, help="Alpha value for some algorithm")
-parser.add_argument("--r", type=int, default=8, help="Reduction factor for some algorithm")
+parser.add_argument("--alpha", type=float, default=2048, help="Alpha value for some algorithm")
+parser.add_argument("--r", type=int, default=64, help="Reduction factor for some algorithm")
 parser.add_argument("--mixed_precision", type=bool, default=False, help="Use mixed precision training")
 parser.add_argument("--epochs", type=int, default=1, help="Number of training epochs")
 parser.add_argument("--ignore_index", type=int, default=128255, help="Index to ignore during loss computation")
@@ -60,7 +53,7 @@ parser.add_argument("--lr", type=float, default=1e-6, help="Learning rate")
 parser.add_argument("--checkpoint_path", type=str, default="", help="Path to save checkpoints")
 parser.add_argument("--checkpoint_epochs", type=int, default=1000000000, help="Checkpoint saving frequency in epochs")
 parser.add_argument("--init_lr", type=float, default=1e-6, help="Initial learning rate for scheduler")
-parser.add_argument("--max_lr", type=float, default=1e-3, help="Maximum learning rate for scheduler")
+parser.add_argument("--max_lr", type=float, default=2e-4, help="Maximum learning rate for scheduler")
 parser.add_argument("--warmup_epochs", type=int, default=3000, help="Number of warmup epochs")
 
 
@@ -97,10 +90,11 @@ def bleu_evaluation(reference_texts, predicted_texts):
 def prepare_data_loaders(tokenizer):
     
     # Prepare data
-    dataset = load_dataset("iwslt2017", "iwslt2017-en-it")
+    dataset_0 = load_dataset("iwslt2017", "iwslt2017-en-it")
+    #dataset_1 = load_dataset("iwslt2017", "iwslt2017-en-de")
     
-    train_data = dataset['train']
-    valid_data = dataset['validation']
+    train_data = dataset_0['train']
+    valid_data = dataset_0['validation']
     
     
     # Train Data
@@ -150,12 +144,12 @@ torch.cuda.manual_seed(2)
 
 model = Transformer(args)
 model = model.to(torch.bfloat16)
-model.load_state_dict_lora("/users2/local/kilian/checkpoints/Llama3.1-8B/") # to do 
+model.load_state_dict_lora("/home/maroc/.llama/checkpoints/Llama3.1-8B/consolidated.00.pth") # to do 
 model = model.to(torch.bfloat16)
 model.prepare_lora_gradients()
 model.to('cuda')
 
-tokenizer = Tokenizer("/users2/local/kilian/checkpoints/Llama3.1-8B/tokenizer.model")
+tokenizer = Tokenizer("/home/maroc/.llama/checkpoints/Llama3.1-8B/tokenizer.model")
 
 train_dataloader, valid_dataloader = prepare_data_loaders(tokenizer)
 
@@ -218,7 +212,7 @@ for e in range(args.epochs):
                 scaler.update()
         
         else:
-            prediction_logits = model(batch)
+            prediction_logits = model(batch,0)
             prediction_logits = prediction_logits.view(-1,args.vocab_size)
             target = target.view(-1)
             
