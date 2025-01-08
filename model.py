@@ -93,12 +93,12 @@ class Attention_LoRA(nn.Module):
     def __init__(self, args: ModelArgs):
         super().__init__()
         self.n_kv_heads = args.n_heads if args.n_kv_heads is None else args.n_kv_heads
-        model_parallel_size = 1
         self.n_local_heads = args.n_heads // model_parallel_size
         self.n_local_kv_heads = self.n_kv_heads // model_parallel_size
         self.n_rep = self.n_local_heads // self.n_local_kv_heads
         self.head_dim = args.dim // args.n_heads
         self.r = args.r
+        self.n_expert = args.n_expert
         
         self.wq = nn.Linear(args.dim,args.n_heads * self.head_dim,bias=False)
 

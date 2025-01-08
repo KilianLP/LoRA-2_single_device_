@@ -48,6 +48,7 @@ parser.add_argument("--mixed_precision", type=bool, default=False, help="Use mix
 parser.add_argument("--epochs", type=int, default=1, help="Number of training epochs")
 parser.add_argument("--ignore_index", type=int, default=128255, help="Index to ignore during loss computation")
 parser.add_argument("--lr", type=float, default=1e-6, help="Learning rate")
+parser.add_argument("--n_expert", type=int, default=1, help="Number of experts")
 
 
 parser.add_argument("--checkpoint_path", type=str, default="", help="Path to save checkpoints")
@@ -180,7 +181,7 @@ for e in range(args.epochs):
         batch = batch.to('cuda')
         target = target.to('cuda')
         
-        prediction_logits = model(batch)
+        prediction_logits = model(batch,0)
         prediction = torch.argmax(prediction_logits, dim = -1)
         
         bleu_values = bleu_evaluation(target,prediction)
