@@ -40,7 +40,7 @@ parser.add_argument("--rope_theta", type=float, default=500000, help="Theta valu
 
 
 parser.add_argument("--n_translation_tokens", type=int, default=0, help="Number of translation tokens")
-parser.add_argument("--max_batch_size", type=int, default=2, help="Maximum batch size")
+parser.add_argument("--max_batch_size", type=int, default=1, help="Maximum batch size")
 parser.add_argument("--max_seq_len", type=int, default=2048, help="Maximum sequence length")
 parser.add_argument("--alpha", type=float, default=2048, help="Alpha value for some algorithm")
 parser.add_argument("--r", type=int, default=64, help="Reduction factor for some algorithm")
@@ -57,8 +57,8 @@ parser.add_argument("--max_lr", type=float, default=2e-4, help="Maximum learning
 parser.add_argument("--warmup_epochs", type=int, default=3000, help="Number of warmup epochs")
 
 
-parser.add_argument("--gradient_accumulation", type=int, default=8, help="Number of gradient accumulation steps")
-parser.add_argument("--model_parallel_size", type=int, default=4, help="model_parallel_size")
+parser.add_argument("--gradient_accumulation", type=int, default=16, help="Number of gradient accumulation steps")
+parser.add_argument("--model_parallel_size", type=int, default=1, help="model_parallel_size")
 parser.add_argument("--ckpt_dir", type=str, default="/users2/local/kilian/checkpoints/Llama3.1-8B", help="ckpt_dir")
 
 
@@ -144,7 +144,8 @@ torch.cuda.manual_seed(2)
 
 model = Transformer(args)
 model = model.to(torch.bfloat16)
-model.load_state_dict_lora("/home/maroc/.llama/checkpoints/Llama3.1-8B/consolidated.00.pth") # to do 
+state_dict = torch.load("/home/maroc/.llama/checkpoints/Llama3.1-8B/consolidated.00.pth", map_location=torch.device('cpu'))
+model.load_state_dict_lora(state_dict) 
 model = model.to(torch.bfloat16)
 model.prepare_lora_gradients()
 model.to('cuda')
@@ -161,7 +162,7 @@ scaler = GradScaler()
 scheduler = LambdaLR(optimizer, lr_lambda=lambda batch_epoch: lr_scheduler(batch_epoch,args.init_lr,args.max_lr,args.warmup_epochs))
 
 wandb.init(
-    project="Llama_3_8B_en_it",   
+    project="Llama_3_8B_en_it_^2",   
     config={              
         "r": args.r,
         "alpha": args.alpha,
