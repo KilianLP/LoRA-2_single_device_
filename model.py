@@ -165,7 +165,12 @@ class Attention_LoRA(nn.Module):
         # torch.bmm(x,(self.bq @ self.aq).T.unsqueeze(0))
         xq = self.wq(x) + self.scale_factor * self.lora_backbone_bq(self.lora_backbone_aq(x)) + self.scale_factor * self.experts_bq[expert](self.experts_aq[expert](x))
         print(18)
-        xk = self.wk(x) + self.scale_factor * self.lora_backbone_bk(self.lora_backbone_ak(x)) + self.scale_factor * self.experts_bk[expert](self.experts_ak[expert](x))
+        a = self.scale_factor * self.lora_backbone_bk(self.lora_backbone_ak(x))
+        print(1)
+        b = self.scale_factor * self.experts_bk[expert](self.experts_ak[expert](x))
+        print(2)
+        xk = self.wk(x) + a + b
+        print(19)
         xv = self.wv(x) + self.scale_factor * self.lora_backbone_bv(self.lora_backbone_av(x)) + self.scale_factor * self.experts_bv[expert](self.experts_av[expert](x))
 
         xq = xq.view(bsz, seqlen, self.n_local_heads, self.head_dim)
