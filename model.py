@@ -164,6 +164,7 @@ class Attention_LoRA(nn.Module):
 
         # torch.bmm(x,(self.bq @ self.aq).T.unsqueeze(0))
         xq = self.wq(x) + self.scale_factor * self.lora_backbone_bq(self.lora_backbone_aq(x)) + self.scale_factor * self.experts_bq[expert](self.experts_aq[expert](x))
+        print(18)
         xk = self.wk(x) + self.scale_factor * self.lora_backbone_bk(self.lora_backbone_ak(x)) + self.scale_factor * self.experts_bk[expert](self.experts_ak[expert](x))
         xv = self.wv(x) + self.scale_factor * self.lora_backbone_bv(self.lora_backbone_av(x)) + self.scale_factor * self.experts_bv[expert](self.experts_av[expert](x))
 
@@ -309,12 +310,12 @@ class Transformer(nn.Module):
 
     def prepare_lora_gradients(self):
         for name, param in self.named_parameters():
-            if 'weight' in name:
-                print("don't requires_grad:" + name)
-                param.requires_grad = False
-            else:
+            if 'experts' in name or 'backbone' in name:
                 print("requires_grad:" + name)
                 param.requires_grad = True
+            else:
+                print("don't requires_grad:" + name)
+                param.requires_grad = False
 
 
         if self.params.n_translation_tokens != 0:
