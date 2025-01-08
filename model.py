@@ -103,9 +103,9 @@ class Attention_LoRA(nn.Module):
         
         self.wq = nn.Linear(args.dim,args.n_heads * self.head_dim,bias=False)
 
-        self.wk = nn.Linear(args.dim,args.n_heads * self.head_dim,bias=False)
+        self.wk = nn.Linear(args.dim,self.n_kv_heads * self.head_dim,bias=False)
 
-        self.wv = nn.Linear(args.dim,args.n_heads * self.head_dim,bias=False)
+        self.wv = nn.Linear(args.dim,self.n_kv_heads * self.head_dim,bias=False)
 
         self.wo = nn.Linear(args.n_heads * self.head_dim,args.dim,bias=False)
 
@@ -122,24 +122,24 @@ class Attention_LoRA(nn.Module):
             self.experts_bq.append(nn.Linear(self.r, args.dim, bias=False))
         
         self.lora_backbone_ak = nn.Linear(args.dim, self.r, bias=False)
-        self.lora_backbone_bk = nn.Linear(self.r, args.dim, bias=False)
+        self.lora_backbone_bk = nn.Linear(self.r, self.n_kv_heads * self.head_dim, bias=False)
         
         self.experts_ak = nn.ModuleList() 
         self.experts_bk = nn.ModuleList() 
         
         for exp in range(self.n_expert):
             self.experts_ak.append(nn.Linear(args.dim, self.r, bias=False))
-            self.experts_bk.append(nn.Linear(self.r, args.dim, bias=False))
+            self.experts_bk.append(nn.Linear(self.r, self.n_kv_heads * self.head_dim, bias=False))
             
         self.lora_backbone_av = nn.Linear(args.dim, self.r, bias=False)
-        self.lora_backbone_bv = nn.Linear(self.r, args.dim, bias=False)
+        self.lora_backbone_bv = nn.Linear(self.r, self.n_kv_heads * self.head_dim, bias=False)
         
         self.experts_av = nn.ModuleList() 
         self.experts_bv = nn.ModuleList() 
         
         for exp in range(self.n_expert):
             self.experts_av.append(nn.Linear(args.dim, self.r, bias=False))
-            self.experts_bv.append(nn.Linear(self.r, args.dim, bias=False))
+            self.experts_bv.append(nn.Linear(self.r, self.n_kv_heads * self.head_dim, bias=False))
             
         self.lora_backbone_ao = nn.Linear(args.dim, self.r, bias=False)
         self.lora_backbone_bo = nn.Linear(self.r, args.dim, bias=False)
