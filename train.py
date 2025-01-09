@@ -159,6 +159,78 @@ def prepare_data_loaders_1(tokenizer):
     valid_dataloader = DataLoader(valid_dataset,args.max_batch_size)
     
     return train_dataloader, valid_dataloader
+
+def prepare_data_loaders_2(tokenizer):
+    
+    # Prepare data
+    dataset = load_dataset("iwslt2017", "iwslt2017-it-nl")
+    
+    train_data = dataset['train']
+    valid_data = dataset['validation']
+    
+    
+    # Train Data
+    data_original = []
+    data_target = []
+    
+    between_tokens = tokenizer.encode("The translation into Dutch is:",bos = False, eos = False)
+    
+    for t in train_data:
+        data_original.append(tokenizer.encode(t['translation']['it'],bos = True, eos = False))
+        data_target.append(tokenizer.encode(t['translation']['nl'],bos = False, eos = True))
+    
+    train_dataset = DataSet(data_original,data_target,between_tokens)
+    train_dataloader = DataLoader(train_dataset,args.max_batch_size)
+    
+    # Eval Data
+    data_original_valid = []
+    data_target_valid = []
+    
+    for t in valid_data:
+        data_original_valid.append(tokenizer.encode(t['translation']['it'],bos = True, eos = False))
+        data_target_valid.append(tokenizer.encode(t['translation']['nl'],bos = False, eos = True))
+    
+    
+    valid_dataset = DataSet(data_original_valid,data_target_valid,between_tokens)
+    valid_dataloader = DataLoader(valid_dataset,args.max_batch_size)
+    
+    return train_dataloader, valid_dataloader
+
+def prepare_data_loaders_3(tokenizer):
+    
+    # Prepare data
+    dataset = load_dataset("iwslt2017", "iwslt2017-it-ro")
+    
+    train_data = dataset['train']
+    valid_data = dataset['validation']
+    
+    
+    # Train Data
+    data_original = []
+    data_target = []
+    
+    between_tokens = tokenizer.encode("The translation into Romanian is:",bos = False, eos = False)
+    
+    for t in train_data:
+        data_original.append(tokenizer.encode(t['translation']['it'],bos = True, eos = False))
+        data_target.append(tokenizer.encode(t['translation']['ro'],bos = False, eos = True))
+    
+    train_dataset = DataSet(data_original,data_target,between_tokens)
+    train_dataloader = DataLoader(train_dataset,args.max_batch_size)
+    
+    # Eval Data
+    data_original_valid = []
+    data_target_valid = []
+    
+    for t in valid_data:
+        data_original_valid.append(tokenizer.encode(t['translation']['it'],bos = True, eos = False))
+        data_target_valid.append(tokenizer.encode(t['translation']['ro'],bos = False, eos = True))
+    
+    
+    valid_dataset = DataSet(data_original_valid,data_target_valid,between_tokens)
+    valid_dataloader = DataLoader(valid_dataset,args.max_batch_size)
+    
+    return train_dataloader, valid_dataloader
     
 
 def lr_scheduler(epoch,init_lr,max_lr,warmup_epochs):
@@ -190,6 +262,8 @@ tokenizer = Tokenizer("/home/maroc/.llama/checkpoints/Llama3.1-8B/tokenizer.mode
 
 train_dataloader_0, valid_dataloader_0 = prepare_data_loaders_0(tokenizer)
 train_dataloader_1, valid_dataloader_1 = prepare_data_loaders_1(tokenizer)
+train_dataloader_2, valid_dataloader_2 = prepare_data_loaders_2(tokenizer)
+train_dataloader_3, valid_dataloader_3 = prepare_data_loaders_3(tokenizer)
 
 
 # Training loop 
@@ -209,9 +283,9 @@ wandb.init(
 
 
 for e in range(args.epochs):
-    """
+    
     blue_values_array = []
-    for batch,target in valid_dataloader_0:
+    for batch,target in valid_dataloader_2:
         
         model.eval()
         batch = batch.to('cuda')
@@ -223,10 +297,10 @@ for e in range(args.epochs):
         bleu_values = bleu_evaluation(target,prediction)
         blue_values_array.append(np.mean(bleu_values))
         
-    wandb.log({"Bleu en-it": np.mean(blue_values_array)})
+    wandb.log({"Bleu it-nl": np.mean(blue_values_array)})
     
     blue_values_array = []
-    for batch,target in valid_dataloader_1:
+    for batch,target in valid_dataloader_3:
         
         model.eval()
         batch = batch.to('cuda')
@@ -238,10 +312,12 @@ for e in range(args.epochs):
         bleu_values = bleu_evaluation(target,prediction)
         blue_values_array.append(np.mean(bleu_values))
         
-    wandb.log({"Bleu en-de": np.mean(blue_values_array)})
-    """
+    wandb.log({"Bleu it-ro": np.mean(blue_values_array)})
+    
     train_dataloader_0_iter = iter(train_dataloader_0)
     train_dataloader_1_iter = iter(train_dataloader_1)
+    train_dataloader_2_iter = iter(train_dataloader_2)
+    train_dataloader_3_iter = iter(train_dataloader_3)
     
     
     for i in range(1,10**5):
@@ -273,6 +349,34 @@ for e in range(args.epochs):
         
         loss.backward()
         wandb.log({"train_loss_de": loss.item()})
+        
+        batch, target = next(train_dataloader_2_iter)
+        model.train()
+        batch = batch.to('cuda')
+        target = target.to('cuda')
+        
+        prediction_logits = model(batch,2)
+        prediction_logits = prediction_logits.view(-1,args.vocab_size)
+        target = target.view(-1)
+        
+        loss = loss_fn(prediction_logits,target)
+        
+        loss.backward()
+        wandb.log({"train_loss_nl": loss.item()})
+        
+        batch, target = next(train_dataloader_3_iter)
+        model.train()
+        batch = batch.to('cuda')
+        target = target.to('cuda')
+        
+        prediction_logits = model(batch,3)
+        prediction_logits = prediction_logits.view(-1,args.vocab_size)
+        target = target.view(-1)
+        
+        loss = loss_fn(prediction_logits,target)
+        
+        loss.backward()
+        wandb.log({"train_loss_ro": loss.item()})
               
                 
         if i % args.gradient_accumulation == 0:
@@ -313,6 +417,36 @@ for e in range(args.epochs):
                 blue_values_array.append(np.mean(bleu_values))
                 
             wandb.log({"Bleu en-de": np.mean(blue_values_array)})
+            
+            blue_values_array = []
+            for batch,target in valid_dataloader_2:
+                
+                model.eval()
+                batch = batch.to('cuda')
+                target = target.to('cuda')
+                
+                prediction_logits = model(batch,2)
+                prediction = torch.argmax(prediction_logits, dim = -1)
+                
+                bleu_values = bleu_evaluation(target,prediction)
+                blue_values_array.append(np.mean(bleu_values))
+                
+            wandb.log({"Bleu it-nl": np.mean(blue_values_array)})
+            
+            blue_values_array = []
+            for batch,target in valid_dataloader_3:
+                
+                model.eval()
+                batch = batch.to('cuda')
+                target = target.to('cuda')
+                
+                prediction_logits = model(batch,3)
+                prediction = torch.argmax(prediction_logits, dim = -1)
+                
+                bleu_values = bleu_evaluation(target,prediction)
+                blue_values_array.append(np.mean(bleu_values))
+                
+            wandb.log({"Bleu it-ro": np.mean(blue_values_array)})
         
     
     blue_values_array = []
