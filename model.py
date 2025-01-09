@@ -155,33 +155,33 @@ class Attention_LoRA(nn.Module):
             
     def init_weight(self):
         
-        nn.init.normal_(self.lora_backbone_aq, mean=0.0, std=1.0)
-        nn.init.zeros_(self.lora_backbone_bq)
+        nn.init.normal_(self.lora_backbone_aq.weight, mean=0.0, std=1.0)
+        nn.init.zeros_(self.lora_backbone_bq.weight)
         
         for exp in range(self.n_expert):
-            nn.init.normal_(self.experts_aq[exp], mean=0.0, std=1.0)
-            nn.init.zeros_(self.experts_bq[exp])
+            nn.init.normal_(self.experts_aq[exp].weight, mean=0.0, std=1.0)
+            nn.init.zeros_(self.experts_bq[exp].weight)
         
-        nn.init.normal_(self.lora_backbone_ak, mean=0.0, std=1.0)
-        nn.init.zeros_(self.lora_backbone_bk)
+        nn.init.normal_(self.lora_backbone_ak.weight, mean=0.0, std=1.0)
+        nn.init.zeros_(self.lora_backbone_bk.weight)
         
         for exp in range(self.n_expert):
-            nn.init.normal_(self.experts_ak[exp], mean=0.0, std=1.0)
-            nn.init.zeros_(self.experts_bk[exp])
+            nn.init.normal_(self.experts_ak[exp].weight, mean=0.0, std=1.0)
+            nn.init.zeros_(self.experts_bk[exp].weight)
             
-        nn.init.normal_(self.lora_backbone_av, mean=0.0, std=1.0)
-        nn.init.zeros_(self.lora_backbone_bv)
+        nn.init.normal_(self.lora_backbone_av.weight, mean=0.0, std=1.0)
+        nn.init.zeros_(self.lora_backbone_bv.weight)
         
         for exp in range(self.n_expert):
-            nn.init.normal_(self.experts_av[exp], mean=0.0, std=1.0)
-            nn.init.zeros_(self.experts_bv[exp])
+            nn.init.normal_(self.experts_av[exp].weight, mean=0.0, std=1.0)
+            nn.init.zeros_(self.experts_bv[exp].weight)
         
-        nn.init.normal_(self.lora_backbone_ao, mean=0.0, std=1.0)
-        nn.init.zeros_(self.lora_backbone_bo)
+        nn.init.normal_(self.lora_backbone_ao.weight, mean=0.0, std=1.0)
+        nn.init.zeros_(self.lora_backbone_bo.weight)
         
         for exp in range(self.n_expert):
-            nn.init.normal_(self.experts_ao[exp], mean=0.0, std=1.0)
-            nn.init.zeros_(self.experts_bo[exp])
+            nn.init.normal_(self.experts_ao[exp].weight, mean=0.0, std=1.0)
+            nn.init.zeros_(self.experts_bo[exp].weight)
 
 
     def forward(
