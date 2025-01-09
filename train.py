@@ -207,9 +207,9 @@ wandb.init(
     }
 )
 
-batch_epochs = 0
+
 for e in range(args.epochs):
-    
+    """
     blue_values_array = []
     for batch,target in valid_dataloader_0:
         
@@ -239,12 +239,12 @@ for e in range(args.epochs):
         blue_values_array.append(np.mean(bleu_values))
         
     wandb.log({"Bleu en-de": np.mean(blue_values_array)})
-    
+    """
     train_dataloader_0_iter = iter(train_dataloader_0)
     train_dataloader_1_iter = iter(train_dataloader_1)
     
     
-    for i in range(1,train_dataloader_0_iter.len()):
+    for i in range(1,train_dataloader_0.len()):
         
         batch, target = next(train_dataloader_0_iter)
         model.train()
@@ -275,13 +275,13 @@ for e in range(args.epochs):
         wandb.log({"train_loss_de": loss.item()})
               
                 
-        if batch_epochs % args.gradient_accumulation == 0:
+        if i % args.gradient_accumulation == 0:
             optimizer.step()
             optimizer.zero_grad()
         
         scheduler.step()
         
-        if batch_epochs % 12000 == 0:
+        if i % 12000 == 0:
             blue_values_array = []
             for batch,target in valid_dataloader_0:
                 
