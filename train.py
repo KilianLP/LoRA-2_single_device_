@@ -55,7 +55,7 @@ parser.add_argument("--checkpoint_path", type=str, default="", help="Path to sav
 parser.add_argument("--checkpoint_epochs", type=int, default=1000000000, help="Checkpoint saving frequency in epochs")
 parser.add_argument("--init_lr", type=float, default=1e-6, help="Initial learning rate for scheduler")
 parser.add_argument("--max_lr", type=float, default=2e-4, help="Maximum learning rate for scheduler")
-parser.add_argument("--warmup_epochs", type=int, default=3000, help="Number of warmup epochs")
+parser.add_argument("--warmup_epochs", type=int, default=600, help="Number of warmup epochs")
 
 
 parser.add_argument("--gradient_accumulation", type=int, default=16, help="Number of gradient accumulation steps")
@@ -283,7 +283,7 @@ for e in range(args.epochs):
         wandb.log({"lr": optimizer.param_groups[0]['lr']})
         wandb.log({"iter": i})
         
-        if i % 6000 == 0:
+        if i % 1750 == 0:
             blue_values_array = []
             for batch,target in valid_dataloader_0:
                 
