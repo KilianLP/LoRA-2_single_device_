@@ -244,7 +244,7 @@ for e in range(args.epochs):
     train_dataloader_1_iter = iter(train_dataloader_1)
     
     
-    for i in range(1,10**6):
+    for i in range(1,10**5):
         
         batch, target = next(train_dataloader_0_iter)
         model.train()
@@ -281,7 +281,7 @@ for e in range(args.epochs):
         
         scheduler.step()
         
-        if i % 12000 == 0:
+        if i % 6000 == 0:
             blue_values_array = []
             for batch,target in valid_dataloader_0:
                 
