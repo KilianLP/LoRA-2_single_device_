@@ -48,7 +48,7 @@ parser.add_argument("--mixed_precision", type=bool, default=False, help="Use mix
 parser.add_argument("--epochs", type=int, default=1, help="Number of training epochs")
 parser.add_argument("--ignore_index", type=int, default=128255, help="Index to ignore during loss computation")
 parser.add_argument("--lr", type=float, default=1e-6, help="Learning rate")
-parser.add_argument("--n_expert", type=int, default=2, help="Number of experts")
+parser.add_argument("--n_expert", type=int, default=4, help="Number of experts")
 
 
 parser.add_argument("--checkpoint_path", type=str, default="", help="Path to save checkpoints")
