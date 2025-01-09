@@ -48,7 +48,7 @@ parser.add_argument("--mixed_precision", type=bool, default=False, help="Use mix
 parser.add_argument("--epochs", type=int, default=1, help="Number of training epochs")
 parser.add_argument("--ignore_index", type=int, default=128255, help="Index to ignore during loss computation")
 parser.add_argument("--lr", type=float, default=1e-6, help="Learning rate")
-parser.add_argument("--n_expert", type=int, default=1, help="Number of experts")
+parser.add_argument("--n_expert", type=int, default=2, help="Number of experts")
 
 
 parser.add_argument("--checkpoint_path", type=str, default="", help="Path to save checkpoints")
@@ -88,14 +88,13 @@ def bleu_evaluation(reference_texts, predicted_texts):
     return bleu_scores
 
 
-def prepare_data_loaders(tokenizer):
+def prepare_data_loaders_0(tokenizer):
     
     # Prepare data
-    dataset_0 = load_dataset("iwslt2017", "iwslt2017-en-it")
-    #dataset_1 = load_dataset("iwslt2017", "iwslt2017-en-de")
+    dataset = load_dataset("iwslt2017", "iwslt2017-en-it")
     
-    train_data = dataset_0['train']
-    valid_data = dataset_0['validation']
+    train_data = dataset['train']
+    valid_data = dataset['validation']
     
     
     # Train Data
@@ -118,6 +117,42 @@ def prepare_data_loaders(tokenizer):
     for t in valid_data:
         data_original_valid.append(tokenizer.encode(t['translation']['en'],bos = True, eos = False))
         data_target_valid.append(tokenizer.encode(t['translation']['it'],bos = False, eos = True))
+    
+    
+    valid_dataset = DataSet(data_original_valid,data_target_valid,between_tokens)
+    valid_dataloader = DataLoader(valid_dataset,args.max_batch_size)
+    
+    return train_dataloader, valid_dataloader
+
+def prepare_data_loaders_1(tokenizer):
+    
+    # Prepare data
+    dataset = load_dataset("iwslt2017", "iwslt2017-en-de")
+    
+    train_data = dataset['train']
+    valid_data = dataset['validation']
+    
+    
+    # Train Data
+    data_original = []
+    data_target = []
+    
+    between_tokens = tokenizer.encode("The translation into German is:",bos = False, eos = False)
+    
+    for t in train_data:
+        data_original.append(tokenizer.encode(t['translation']['en'],bos = True, eos = False))
+        data_target.append(tokenizer.encode(t['translation']['de'],bos = False, eos = True))
+    
+    train_dataset = DataSet(data_original,data_target,between_tokens)
+    train_dataloader = DataLoader(train_dataset,args.max_batch_size)
+    
+    # Eval Data
+    data_original_valid = []
+    data_target_valid = []
+    
+    for t in valid_data:
+        data_original_valid.append(tokenizer.encode(t['translation']['en'],bos = True, eos = False))
+        data_target_valid.append(tokenizer.encode(t['translation']['de'],bos = False, eos = True))
     
     
     valid_dataset = DataSet(data_original_valid,data_target_valid,between_tokens)
@@ -153,7 +188,8 @@ model.to('cuda')
 
 tokenizer = Tokenizer("/home/maroc/.llama/checkpoints/Llama3.1-8B/tokenizer.model")
 
-train_dataloader, valid_dataloader = prepare_data_loaders(tokenizer)
+train_dataloader_0, valid_dataloader_0 = prepare_data_loaders_0(tokenizer)
+train_dataloader_1, valid_dataloader_1 = prepare_data_loaders_1(tokenizer)
 
 
 # Training loop 
@@ -175,7 +211,7 @@ batch_epochs = 0
 for e in range(args.epochs):
     
     blue_values_array = []
-    for batch,target in valid_dataloader:
+    for batch,target in valid_dataloader_0:
         
         model.eval()
         batch = batch.to('cuda')
@@ -187,66 +223,97 @@ for e in range(args.epochs):
         bleu_values = bleu_evaluation(target,prediction)
         blue_values_array.append(np.mean(bleu_values))
         
-    wandb.log({"Bleu": np.mean(blue_values_array)})
+    wandb.log({"Bleu en-it": np.mean(blue_values_array)})
+    
+    blue_values_array = []
+    for batch,target in valid_dataloader_1:
+        
+        model.eval()
+        batch = batch.to('cuda')
+        target = target.to('cuda')
+        
+        prediction_logits = model(batch,1)
+        prediction = torch.argmax(prediction_logits, dim = -1)
+        
+        bleu_values = bleu_evaluation(target,prediction)
+        blue_values_array.append(np.mean(bleu_values))
+        
+    wandb.log({"Bleu en-de": np.mean(blue_values_array)})
+    
+    train_dataloader_0_iter = iter(train_dataloader_0)
+    train_dataloader_1_iter = iter(train_dataloader_1)
     
     
-    for batch,target in train_dataloader:
+    for i in range(min(len(train_dataloader_0_iter), len(train_dataloader_1_iter)) * 2):
         
-        
+        batch, target = next(train_dataloader_0_iter)
         model.train()
         batch = batch.to('cuda')
         target = target.to('cuda')
         
-        optimizer.zero_grad()
+        prediction_logits = model(batch,0)
+        prediction_logits = prediction_logits.view(-1,args.vocab_size)
+        target = target.view(-1)
         
-        if args.mixed_precision:
-            with autocast():
-                prediction_logits = model(batch)
-                prediction_logits = prediction_logits.view(-1,args.vocab_size)
-                target = target.view(-1)
+        loss = loss_fn(prediction_logits,target)
+        
+        loss.backward()
+        wandb.log({"train_loss_it": loss.item()})
+        
+        batch, target = next(train_dataloader_1_iter)
+        model.train()
+        batch = batch.to('cuda')
+        target = target.to('cuda')
+        
+        prediction_logits = model(batch,1)
+        prediction_logits = prediction_logits.view(-1,args.vocab_size)
+        target = target.view(-1)
+        
+        loss = loss_fn(prediction_logits,target)
+        
+        loss.backward()
+        wandb.log({"train_loss_de": loss.item()})
+              
                 
-                loss = loss_fn(prediction_logits,target)
-                
-            scaler.scale(loss).backward()
-            
-            if batch_epochs % args.gradient_accumulation == 0:
-                scaler.step(optimizer)
-                scaler.update()
+        if batch_epochs % args.gradient_accumulation == 0:
+            optimizer.step()
+            optimizer.zero_grad()
         
-        else:
-            prediction_logits = model(batch,0)
-            prediction_logits = prediction_logits.view(-1,args.vocab_size)
-            target = target.view(-1)
-            
-            loss = loss_fn(prediction_logits,target)
-            
-            loss.backward()
-            
-            grad_norm_a = 0
-            grad_norm_b = 0
-            for name, param in model.named_parameters():
-                if ".ak" in name or ".av" in name or ".aq" in name or ".ao" in name :
-                    grad_norm_a += param.grad.norm().item()
-                if ".bk" in name or ".bv" in name or ".bq" in name or ".bo" in name :
-                    grad_norm_b += param.grad.norm().item()
-                    
-            grad_norm_a = grad_norm_a/(4*args.n_layers)
-            grad_norm_b = grad_norm_b/(4*args.n_layers)
-            
-            wandb.log({"grad_norm_a": grad_norm_a})
-            wandb.log({"grad_norm_b": grad_norm_b})
-                  
-                    
-            if batch_epochs % args.gradient_accumulation == 0:
-                optimizer.step()
-        
-        wandb.log({"train_loss": loss.item()})
-        
-        batch_epochs += 1
         scheduler.step()
+        
+        if batch_epochs % 12000 == 0:
+            blue_values_array = []
+            for batch,target in valid_dataloader_0:
+                
+                model.eval()
+                batch = batch.to('cuda')
+                target = target.to('cuda')
+                
+                prediction_logits = model(batch,0)
+                prediction = torch.argmax(prediction_logits, dim = -1)
+                
+                bleu_values = bleu_evaluation(target,prediction)
+                blue_values_array.append(np.mean(bleu_values))
+                
+            wandb.log({"Bleu en-it": np.mean(blue_values_array)})
+            
+            blue_values_array = []
+            for batch,target in valid_dataloader_1:
+                
+                model.eval()
+                batch = batch.to('cuda')
+                target = target.to('cuda')
+                
+                prediction_logits = model(batch,1)
+                prediction = torch.argmax(prediction_logits, dim = -1)
+                
+                bleu_values = bleu_evaluation(target,prediction)
+                blue_values_array.append(np.mean(bleu_values))
+                
+            wandb.log({"Bleu en-de": np.mean(blue_values_array)})
     
     blue_values_array = []
-    for batch,target in valid_dataloader:
+    for batch,target in valid_dataloader_0:
         
         model.eval()
         batch = batch.to('cuda')
