@@ -150,12 +150,44 @@ class Attention_LoRA(nn.Module):
         for exp in range(self.n_expert):
             self.experts_ao.append(nn.Linear(args.dim, self.r, bias=False))
             self.experts_bo.append(nn.Linear(self.r, args.dim, bias=False))
+            
+        self.init_weight()
+            
+    def init_weight(self):
+        
+        nn.init.normal_(self.lora_backbone_aq, mean=0.0, std=1.0)
+        nn.init.zeros_(self.lora_backbone_bq)
+        
+        for exp in range(self.n_expert):
+            nn.init.normal_(self.experts_aq[exp], mean=0.0, std=1.0)
+            nn.init.zeros_(self.experts_bq[exp])
+        
+        nn.init.normal_(self.lora_backbone_ak, mean=0.0, std=1.0)
+        nn.init.zeros_(self.lora_backbone_bk)
+        
+        for exp in range(self.n_expert):
+            nn.init.normal_(self.experts_ak[exp], mean=0.0, std=1.0)
+            nn.init.zeros_(self.experts_bk[exp])
+            
+        nn.init.normal_(self.lora_backbone_av, mean=0.0, std=1.0)
+        nn.init.zeros_(self.lora_backbone_bv)
+        
+        for exp in range(self.n_expert):
+            nn.init.normal_(self.experts_av[exp], mean=0.0, std=1.0)
+            nn.init.zeros_(self.experts_bv[exp])
+        
+        nn.init.normal_(self.lora_backbone_ao, mean=0.0, std=1.0)
+        nn.init.zeros_(self.lora_backbone_bo)
+        
+        for exp in range(self.n_expert):
+            nn.init.normal_(self.experts_ao[exp], mean=0.0, std=1.0)
+            nn.init.zeros_(self.experts_bo[exp])
 
 
     def forward(
         self,
         x: torch.Tensor,
-        expert: torch.Tensor,
+        expert: int,
         start_pos: int,
         freqs_cis: torch.Tensor,
         mask: Optional[torch.Tensor],
@@ -245,7 +277,7 @@ class TransformerBlock(nn.Module):
     def forward(
         self,
         x: torch.Tensor,
-        expert: torch.Tensor,
+        expert: int,
         start_pos: int,
         freqs_cis: torch.Tensor,
         mask: Optional[torch.Tensor],
@@ -279,7 +311,7 @@ class Transformer(nn.Module):
         )
 
     #@torch.inference_mode()
-    def forward(self, tokens: torch.Tensor, expert: torch.Tensor,):
+    def forward(self, tokens: torch.Tensor, expert: int):
         start_pos = 0
         _bsz, seqlen = tokens.shape
         h = self.tok_embeddings(tokens)
