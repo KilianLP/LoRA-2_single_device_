@@ -244,7 +244,7 @@ for e in range(args.epochs):
     train_dataloader_1_iter = iter(train_dataloader_1)
     
     
-    for i in range(min(len(train_dataloader_0_iter), len(train_dataloader_1_iter)) * 2):
+    for i in range(1,train_dataloader_0_iter.len()):
         
         batch, target = next(train_dataloader_0_iter)
         model.train()
