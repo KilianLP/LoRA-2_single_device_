@@ -280,6 +280,8 @@ for e in range(args.epochs):
             optimizer.zero_grad()
         
         scheduler.step()
+        wandb.log({"lr": optimizer.param_groups[0]['lr']})
+        wandb.log({"iter": i})
         
         if i % 6000 == 0:
             blue_values_array = []
@@ -311,6 +313,7 @@ for e in range(args.epochs):
                 blue_values_array.append(np.mean(bleu_values))
                 
             wandb.log({"Bleu en-de": np.mean(blue_values_array)})
+        
     
     blue_values_array = []
     for batch,target in valid_dataloader_0:
